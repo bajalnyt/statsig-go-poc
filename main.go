@@ -34,7 +34,10 @@ func main() {
 
 func IsActive(featureName string, regi int64) bool {
 	user := statsig.User{CustomIDs: map[string]string{"regi_id": fmt.Sprint(regi)}}
+	// If this is a gate, we need to check if the user is in the gate
 	return statsig.CheckGate(user, featureName)
-	experiment := statsig.GetExperiment(user, featureName)
-	return experiment.GetBool(featureName, true)
+
+	// If this is an experiment, we need to get the treatment
+	//experiment := statsig.GetExperiment(user, featureName)
+	//return experiment.GetBool(featureName, true)
 }
