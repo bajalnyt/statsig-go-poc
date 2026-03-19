@@ -3,41 +3,52 @@ package main
 import (
 	"fmt"
 	"math/rand/v2"
+	"os"
 
+	"github.com/joho/godotenv"
 	statsig "github.com/statsig-io/go-sdk"
 )
 
 func main() {
-	statsig.InitializeWithOptions(
+	_ = godotenv.Load()
 
-		"supply-secret-here",
+	secretKey := os.Getenv("STATSIG_SECRET_KEY")
+	if secretKey == "" {
+		panic("STATSIG_SECRET_KEY must be set in .env or environment")
+	}
+
+	statsig.InitializeWithOptions(
+		secretKey,
 		&statsig.Options{
-			Environment: statsig.Environment{Tier: "production"},
+			Environment: statsig.Environment{Tier: "development"},
 		},
 	)
 
-	countActive := 0
-	countInactive := 0
 	// check 10 random users
-	for i := 0; i < 100; i++ {
+	total := 10
+	passed := 0
+	for i := 0; i < total; i++ {
 		userID := rand.Int64()
-		stat := IsActive("payflow_apple_pay_via_pug", userID)
-		fmt.Printf("User %d: %t\n", userID, stat)
-		if stat {
-			countActive++
-		} else {
-			countInactive++
+		if Evaluate("plato_use_pug_for_paypal_billing", int64(userID)) {
+			passed++
 		}
 	}
-	fmt.Printf("Count Active: %d, Count Inactive: %d\n", countActive, countInactive)
+	pct := float64(passed) / float64(total) * 100
+	fmt.Printf("Gate checks passed: %d/%d (%.1f%%)\n", passed, total, pct)
 }
 
-func IsActive(featureName string, regi int64) bool {
+func Evaluate(featureName string, regi int64) bool {
+	//fmt.Println("Evaluating", featureName, "for user", regi)
 	user := statsig.User{CustomIDs: map[string]string{"regi_id": fmt.Sprint(regi)}}
 	// If this is a gate, we need to check if the user is in the gate
-	return statsig.CheckGate(user, featureName)
+	val := statsig.CheckGate(user, featureName)
+	if val {
+		fmt.Println("User is in the gate")
+	}
+	return val
 
 	// If this is an experiment, we need to get the treatment
 	//experiment := statsig.GetExperiment(user, featureName)
-	//return experiment.GetBool(featureName, true)
+	//fmt.Println(experiment)
+	//fmt.Println(experiment.GetString("payment_methods", ""))
 }
